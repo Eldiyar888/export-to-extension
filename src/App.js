@@ -6,11 +6,18 @@ import Button from "./components/TheButton/TheButton";
 import { CSVLink } from "react-csv";
 import autoTable from 'jspdf-autotable'
 import jsPDF from "jspdf";
+import { message } from 'antd';
 
 function App() {
   const [users, setUsers] = useState([]);
+  const csvLinkRef = useRef()
 
   const columns = [
+    {
+      title: 'Id',
+      dataIndex: 'id',
+      key: 'id',
+    },
     {
       title: 'Name',
       dataIndex: 'name',
@@ -43,6 +50,7 @@ function App() {
     console.log(response.data)
     const res = response.data.map(item => {
       const user = {
+        id: item.id,
         name: item.name,
         username: item.username,
         email: item.email,
@@ -59,27 +67,45 @@ function App() {
     getUsers();
   }, [])
 
-  const csvLinkRef = useRef()
+  const addUsersDate = () => {
+    const currentDate = new Date().toLocaleDateString();
+    let lastKey = null;
+    if (users && users.length > 0) {
+      const keys = Object.keys(users[users.length - 1]);
+      lastKey = keys[keys.length - 1];
+    }
+
+    return [...users, {}, { [lastKey]: `Exported on: ${currentDate}` }]
+  }
+
 
   const getTableDataToExportXML = () => {
     if (csvLinkRef && csvLinkRef.current) {
-      csvLinkRef.current.link.click(); 
+      csvLinkRef.current.link.click();
     }
+    handleMessage('Таблица была экспортирована в файл с расширением xlsx');
   }
 
   const getTableDataToExportPDF = () => {
     const doc = new jsPDF();
-    const headers = [columns];
-    const data = users.map(item=> [item.name, item.username, item.email, item.phone, item.website]);
 
     let content = {
-      head: headers,
-      body: data
+      head: [columns],
+      body: users.map(item => Object.values(item))
     };
+
+    const currentDate = new Date().toLocaleDateString();
+    content.body.push([]);
+    content.body.push([`Exported on: ${currentDate}`]);
 
     doc.autoTable(content);
     doc.save("table.pdf")
+    handleMessage('Таблица была экспортирована в файл с расширением pdf');
   }
+
+  const handleMessage = (txtMessage) => {
+    message.success(txtMessage);
+  };
 
   return (
     <div className="App">
@@ -88,11 +114,11 @@ function App() {
         <div className="buttons">
           <Button onClick={getTableDataToExportPDF} value={'PDF'} />
           <Button onClick={getTableDataToExportXML} value={'XLSX'} />
-          <CSVLink 
-            data={users} 
-            filename={"my-file.csv"} 
+          <CSVLink
+            data={addUsersDate()}
+            filename={"my-file.csv"}
             enclosingCharacter={` `}
-            separator={";"} 
+            separator={";"}
             ref={csvLinkRef} />
         </div>
       </div>
